@@ -1,105 +1,77 @@
 # EXP 1 :  ANALYSIS OF DFT WITH AUDIO SIGNAL
 
 # AIM: 
-
   To analyze audio signal by removing unwanted frequency. 
-
 # APPARATUS REQUIRED: 
-   
    PC installed with SCILAB/Python. 
-
 # PROGRAM: 
-```
-// analyze audio signal
-
-# Step 1: Install required packages
-!pip install -q librosa soundfile
-
-# Step 2: Upload audio file
+```analyze audio signal
 from google.colab import files
-uploaded = files.upload()   # choose your .wav / .mp3 / .flac file
-filename = next(iter(uploaded.keys()))
-print("Uploaded:", filename)
-
-# Step 3: Load audio
-import librosa, librosa.display
+uploaded = files.upload()   
+!pip install scipy matplotlib numpy
 import numpy as np
-import soundfile as sf
-
-y, sr = librosa.load(filename, sr=None, mono=True)  
-duration = len(y) / sr
-print(f"Sample rate = {sr} Hz, duration = {duration:.2f} s, samples = {len(y)}")
-
-# Step 4: Play audio
-from IPython.display import Audio, display
-display(Audio(y, rate=sr))
-
-# Step 5: Full FFT (DFT) analysis
 import matplotlib.pyplot as plt
+from scipy.io import wavfile
+from scipy.fft import fft, fftfreq, ifft
 
-n_fft = 2**14   
-Y = np.fft.rfft(y, n=n_fft)
-freqs = np.fft.rfftfreq(n_fft, 1/sr)
-magnitude = np.abs(Y)
+# Step 1: Load the audio
+fs, data = wavfile.read("cat-meow-401729.wav")  
+if data.ndim > 1:   # if stereo, take one channel
+    data = data[:,0]
 
-plt.figure(figsize=(12,4))
-plt.plot(freqs, magnitude)
-plt.xlim(0, sr/2)
+# Step 2: Plot original waveform
+plt.figure(figsize=(10,4))
+plt.plot(data)
+plt.title("Original Audio Signal")
+plt.xlabel("Samples")
+plt.ylabel("Amplitude")
+plt.show()
+
+# Step 3: Do FFT (DFT)
+N = len(data)
+yf = fft(data)
+xf = fftfreq(N, 1/fs)
+
+plt.figure(figsize=(10,4))
+plt.plot(xf[:N//2], np.abs(yf[:N//2]))
+plt.title("Frequency Spectrum")
 plt.xlabel("Frequency (Hz)")
 plt.ylabel("Magnitude")
-plt.title("FFT Magnitude Spectrum (linear scale)")
-plt.grid(True)
 plt.show()
 
-plt.figure(figsize=(12,4))
-plt.semilogy(freqs, magnitude+1e-12)
-plt.xlim(0, sr/2)
-plt.xlabel("Frequency (Hz)")
-plt.ylabel("Magnitude (log scale)")
-plt.title("FFT Magnitude Spectrum (log scale)")
-plt.grid(True)
+# Step 4: Remove unwanted frequency (example: remove around 1000 Hz)
+filtered = yf.copy()
+low, high = 995, 1005   # frequency range to remove
+filtered[(xf>low) & (xf<high)] = 0
+filtered[(xf<-low) & (xf>-high)] = 0
+
+# Step 5: Inverse FFT to reconstruct signal
+cleaned = np.real(ifft(filtered))
+
+# Step 6: Plot cleaned waveform
+plt.figure(figsize=(10,4))
+plt.plot(cleaned)
+plt.title("Filtered Audio Signal")
+plt.xlabel("Samples")
+plt.ylabel("Amplitude")
 plt.show()
 
-# Step 6: Top 10 dominant frequencies
-N = 10
-idx = np.argsort(magnitude)[-N:][::-1]
-print("\nTop 10 Dominant Frequencies:")
-for i, k in enumerate(idx):
-    print(f"{i+1:2d}. {freqs[k]:8.2f} Hz  (Magnitude = {magnitude[k]:.2e})")
-
-# Step 7: Spectrogram (STFT)
-n_fft = 2048
-hop_length = n_fft // 4
-D = librosa.stft(y, n_fft=n_fft, hop_length=hop_length, window='hann')
-S_db = librosa.amplitude_to_db(np.abs(D), ref=np.max)
-
-plt.figure(figsize=(12,5))
-librosa.display.specshow(S_db, sr=sr, hop_length=hop_length,
-                         x_axis='time', y_axis='hz')
-plt.colorbar(format="%+2.0f dB")
-plt.title("Spectrogram (dB)")
-plt.ylim(0, sr/2)
-plt.show()
-# AUDIO USED:
-[mixkit-small-crowd-laugh-and-applause-422.wav](https://github.com/user-attachments/files/22463928/mixkit-small-crowd-laugh-and-applause-422.wav)
-
-# OUTPUT: 
-Top 10 Dominant Frequencies:
- 1.    69.98 Hz  (Magnitude = 6.79e+00)
- 2.   282.62 Hz  (Magnitude = 5.87e+00)
- 3.   258.40 Hz  (Magnitude = 5.65e+00)
- 4.    67.29 Hz  (Magnitude = 5.61e+00)
- 5.   301.46 Hz  (Magnitude = 5.03e+00)
- 6.   261.09 Hz  (Magnitude = 4.82e+00)
- 7.   279.93 Hz  (Magnitude = 4.69e+00)
- 8.   298.77 Hz  (Magnitude = 4.41e+00)
- 9.   253.02 Hz  (Magnitude = 4.36e+00)
-10.   304.16 Hz  (Magnitude = 4.30e+00)
-<img width="384" height="238" alt="image" src="https://github.com/user-attachments/assets/799fc932-4dc2-42d3-a3cf-bcf906ab8513" />
-<img width="357" height="143" alt="image" src="https://github.com/user-attachments/assets/b451c85c-9ad6-4875-a106-81821fe25ece" />
+# Step 7: Save filtered audio
+wavfile.write("cleaned_audio.wav", fs, cleaned.astype(np.int16))
+print("Filtered audio saved as cleaned_audio.wav")
 ```
 
-# RESULTS
-THUS,THE ANALYSIS OF DFT WITH AUDIO SIGNAL IS VERIFIED
+
+# OUTPUT: 
+<img width="1097" height="488" alt="image" src="https://github.com/user-attachments/assets/d0b37ec0-3d0f-44ef-b879-f0407098df26" />
+<img width="1064" height="507" alt="image" src="https://github.com/user-attachments/assets/c6bb4f95-f54b-4da4-b6e4-c896b6b8224a" />
+<img width="1109" height="491" alt="image" src="https://github.com/user-attachments/assets/e6630501-292a-44ba-af16-731b635b2e8e" />
+
+
+# RESULT
+
+
+   The audio signal was successfully analyzed using DFT, and unwanted frequency components were removed, resulting in a clearer reconstructed signal.
+
 
 
